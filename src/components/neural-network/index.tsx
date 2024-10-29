@@ -46,6 +46,42 @@ const Square = ({ progress, isActive, size }: SquareProps) => {
   );
 };
 
+const Predictions = ({
+  finalOutput,
+}: {
+  finalOutput: SharedValue<number[]>;
+}) => {
+  return (
+    <View style={{ flexDirection: 'row', gap: 8, justifyContent: 'center' }}>
+      {finalOutput.value.map((_, i) => {
+        // eslint-disable-next-line react-hooks/rules-of-hooks
+        const progress = useDerivedValue(() => finalOutput.value[i]);
+
+        // eslint-disable-next-line react-hooks/rules-of-hooks
+        const isActive = useDerivedValue(() => {
+          return (
+            finalOutput.value.findIndex(
+              (val, index) => val > 0.5 && index === i,
+            ) !== -1
+          );
+        });
+        return (
+          <View
+            key={i}
+            style={{
+              gap: 4,
+              justifyContent: 'center',
+              alignItems: 'center',
+            }}>
+            <Text style={{ color }}>{i === 10 ? 'N/A' : i}</Text>
+            <Square progress={progress} isActive={isActive} size={20} />
+          </View>
+        );
+      })}
+    </View>
+  );
+};
+
 const drawLayerConnections = ({
   fromCoords,
   toCoords,
@@ -204,6 +240,8 @@ export const NeuralNetwork = ({ weights, predictions }: NeuralNetworkProps) => {
     return skPath;
   }, [firstLayerCoords, secondLayerCoords, outputLayerCoords, weights]);
 
+  const finalOutput = useDerivedValue(() => predictions.value.finalOutput);
+
   return (
     <View>
       <Canvas
@@ -225,35 +263,7 @@ export const NeuralNetwork = ({ weights, predictions }: NeuralNetworkProps) => {
         />
         <Path path={networkPath} color={'#d2d2d2'} style="fill" />
       </Canvas>
-      <View style={{ flexDirection: 'row', gap: 8, justifyContent: 'center' }}>
-        {predictions.value.finalOutput.map((_, i) => {
-          // eslint-disable-next-line react-hooks/rules-of-hooks
-          const progress = useDerivedValue(
-            () => predictions.value.finalOutput[i],
-          );
-
-          // eslint-disable-next-line react-hooks/rules-of-hooks
-          const isActive = useDerivedValue(() => {
-            return (
-              predictions.value.finalOutput.findIndex(
-                (val, index) => val > 0.5 && index === i,
-              ) !== -1
-            );
-          });
-          return (
-            <View
-              key={i}
-              style={{
-                gap: 4,
-                justifyContent: 'center',
-                alignItems: 'center',
-              }}>
-              <Text style={{ color }}>{i === 10 ? 'N/A' : i}</Text>
-              <Square progress={progress} isActive={isActive} size={20} />
-            </View>
-          );
-        })}
-      </View>
+      <Predictions finalOutput={finalOutput} />
     </View>
   );
 };
