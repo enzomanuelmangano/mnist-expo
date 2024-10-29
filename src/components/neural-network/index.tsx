@@ -3,7 +3,7 @@ import type { SharedValue } from 'react-native-reanimated';
 import Animated, { useDerivedValue, withTiming } from 'react-native-reanimated';
 import { useMemo } from 'react';
 import type { SkPath } from '@shopify/react-native-skia';
-import { Canvas, Path, Skia } from '@shopify/react-native-skia';
+import { Canvas, Circle, Group, Path, Skia } from '@shopify/react-native-skia';
 
 import type { NeuralNetworkWeights, PredictResult } from '../../neural-network';
 
@@ -12,35 +12,27 @@ type NeuralNetworkProps = {
   predictions: SharedValue<PredictResult>;
 };
 
-type SquareProps = {
+// Components
+const Square = ({
+  progress,
+  isActive,
+  size,
+}: {
   progress: SharedValue<number>;
   isActive: SharedValue<boolean>;
   size: number;
-};
-
-const color = '#d2d2d2';
-
-const Square = ({ progress, isActive, size }: SquareProps) => {
+}) => {
   const rColor = useDerivedValue(() => {
     return withTiming(isActive.value ? '#5cd1ff' : 'white');
   });
+
   return (
-    <Animated.View
-      style={{
-        height: size,
-        width: size,
-        borderWidth: 1,
-        borderColor: rColor,
-        borderRadius: 40,
-        padding: 2,
-      }}>
+    <Animated.View style={[styles.square, { height: size, width: size }]}>
       <Animated.View
-        style={{
-          opacity: progress,
-          flex: 1,
-          backgroundColor: rColor,
-          borderRadius: 30,
-        }}
+        style={[
+          styles.squareInner,
+          { opacity: progress, backgroundColor: rColor },
+        ]}
       />
     </Animated.View>
   );
@@ -52,36 +44,80 @@ const Predictions = ({
   finalOutput: SharedValue<number[]>;
 }) => {
   return (
-    <View style={{ flexDirection: 'row', gap: 8, justifyContent: 'center' }}>
-      {finalOutput.value.map((_, i) => {
-        // eslint-disable-next-line react-hooks/rules-of-hooks
-        const progress = useDerivedValue(() => finalOutput.value[i]);
-
-        // eslint-disable-next-line react-hooks/rules-of-hooks
-        const isActive = useDerivedValue(() => {
-          return (
-            finalOutput.value.findIndex(
-              (val, index) => val > 0.5 && index === i,
-            ) !== -1
-          );
-        });
-        return (
-          <View
-            key={i}
-            style={{
-              gap: 4,
-              justifyContent: 'center',
-              alignItems: 'center',
-            }}>
-            <Text style={{ color }}>{i === 10 ? 'N/A' : i}</Text>
-            <Square progress={progress} isActive={isActive} size={20} />
-          </View>
-        );
-      })}
+    <View style={styles.predictionsContainer}>
+      {finalOutput.value.map((_, i) => (
+        <PredictionItem key={i} index={i} finalOutput={finalOutput} />
+      ))}
     </View>
   );
 };
 
+const PredictionItem = ({
+  index,
+  finalOutput,
+}: {
+  index: number;
+  finalOutput: SharedValue<number[]>;
+}) => {
+  const progress = useDerivedValue(() => finalOutput.value[index]);
+  const isActive = useDerivedValue(() => {
+    return (
+      finalOutput.value.findIndex((val, idx) => val > 0.5 && idx === index) !==
+      -1
+    );
+  });
+
+  return (
+    <View style={styles.predictionItem}>
+      <Text style={{ color: '#d2d2d2' }}>{index === 10 ? 'N/A' : index}</Text>
+      <Square progress={progress} isActive={isActive} size={20} />
+    </View>
+  );
+};
+
+// Neural network visualization components
+const NetworkNode = ({
+  coord,
+  opacity,
+}: {
+  coord: { x: number; y: number };
+  opacity: SharedValue<number>;
+}) => {
+  const circleRadius = 2.5;
+
+  return (
+    <Group key={coord.x}>
+      <Circle
+        cx={coord.x}
+        cy={coord.y}
+        r={circleRadius}
+        color={'white'}
+        opacity={opacity}
+      />
+      <Circle
+        cx={coord.x}
+        cy={coord.y}
+        r={circleRadius}
+        color={'white'}
+        style={'stroke'}
+      />
+    </Group>
+  );
+};
+
+const NetworkLayer = ({
+  coords,
+  getOpacity,
+}: {
+  coords: Array<{ x: number; y: number }>;
+  getOpacity: (index: number) => SharedValue<number>;
+}) => {
+  return coords.map((coord, i) => (
+    <NetworkNode key={coord.x} coord={coord} opacity={getOpacity(i)} />
+  ));
+};
+
+// Helper functions
 const drawLayerConnections = ({
   fromCoords,
   toCoords,
@@ -100,14 +136,11 @@ const drawLayerConnections = ({
   fromCoords.forEach((fromNode, i) => {
     toCoords.forEach((toNode, j) => {
       const weight = layerWeights[i][j];
-      if (weight > 0 && type === 'negative') {
-        return;
-      }
-      if (weight < 0 && type === 'positive') {
-        return;
-      }
-      const absoluteWeight = Math.abs(weight);
-      if (absoluteWeight < weightThreshold) {
+      if (
+        (weight > 0 && type === 'negative') ||
+        (weight < 0 && type === 'positive') ||
+        Math.abs(weight) < weightThreshold
+      ) {
         return;
       }
       path.moveTo(fromNode.x, fromNode.y);
@@ -116,29 +149,30 @@ const drawLayerConnections = ({
   });
 };
 
-export const NeuralNetwork = ({ weights, predictions }: NeuralNetworkProps) => {
-  const { width } = useWindowDimensions();
-
-  const circleRadius = 2.5;
+const useLayerCoordinates = (
+  width: number,
+  weights: NeuralNetworkWeights,
+  predictions: SharedValue<PredictResult>,
+) => {
   const marginLayers = 7;
   const distanceBetweenLayers = 100;
   const baseY = 20;
 
   const firstLayerCoords = useMemo(() => {
-    const layer2 = weights.hiddenLayerWeights;
-    const totalWidth = layer2.length * marginLayers;
+    const layer = weights.hiddenLayerWeights;
+    const totalWidth = layer.length * marginLayers;
     const paddingHorizontal = (width - totalWidth) / 2;
-    return layer2.map((_, i) => ({
+    return layer.map((_, i) => ({
       x: i * marginLayers + paddingHorizontal,
       y: baseY,
     }));
   }, [weights, width]);
 
   const secondLayerCoords = useMemo(() => {
-    const layer2 = weights.outputLayerWeights;
-    const totalWidth = layer2.length * marginLayers;
+    const layer = weights.outputLayerWeights;
+    const totalWidth = layer.length * marginLayers;
     const paddingHorizontal = (width - totalWidth) / 2;
-    return layer2.map((_, i) => ({
+    return layer.map((_, i) => ({
       x: i * marginLayers + paddingHorizontal,
       y: baseY + distanceBetweenLayers,
     }));
@@ -158,42 +192,27 @@ export const NeuralNetwork = ({ weights, predictions }: NeuralNetworkProps) => {
     }));
   }, [predictions, weights, width]);
 
-  const networkPath = useMemo(() => {
-    const skPath = Skia.Path.Make();
+  return {
+    firstLayerCoords,
+    secondLayerCoords,
+    outputLayerCoords,
+    dimensions: {
+      distanceBetweenLayers,
+      baseY,
+    },
+  };
+};
 
-    for (let i = 0; i < firstLayerCoords.length; i++) {
-      skPath.addCircle(
-        firstLayerCoords[i].x,
-        firstLayerCoords[i].y,
-        circleRadius,
-      );
-    }
-
-    for (let i = 0; i < secondLayerCoords.length; i++) {
-      skPath.addCircle(
-        secondLayerCoords[i].x,
-        secondLayerCoords[i].y,
-        circleRadius,
-      );
-    }
-
-    for (let i = 0; i < outputLayerCoords.length; i++) {
-      skPath.addCircle(
-        outputLayerCoords[i].x,
-        outputLayerCoords[i].y,
-        circleRadius,
-      );
-    }
-
-    return skPath;
-  }, [firstLayerCoords, secondLayerCoords, outputLayerCoords]);
-
+// Main component
+export const NeuralNetwork = ({ weights, predictions }: NeuralNetworkProps) => {
+  const { width } = useWindowDimensions();
   const WEIGHT_THRESHOLD = 0.35;
+
+  const { firstLayerCoords, secondLayerCoords, outputLayerCoords, dimensions } =
+    useLayerCoordinates(width, weights, predictions);
 
   const positiveWeightLines = useMemo(() => {
     const skPath = Skia.Path.Make();
-
-    // Draw connections between layers
     drawLayerConnections({
       fromCoords: firstLayerCoords,
       toCoords: secondLayerCoords,
@@ -202,7 +221,6 @@ export const NeuralNetwork = ({ weights, predictions }: NeuralNetworkProps) => {
       weightThreshold: WEIGHT_THRESHOLD,
       type: 'positive',
     });
-
     drawLayerConnections({
       fromCoords: secondLayerCoords,
       toCoords: outputLayerCoords,
@@ -211,14 +229,11 @@ export const NeuralNetwork = ({ weights, predictions }: NeuralNetworkProps) => {
       weightThreshold: WEIGHT_THRESHOLD,
       type: 'positive',
     });
-
     return skPath;
   }, [firstLayerCoords, secondLayerCoords, outputLayerCoords, weights]);
 
   const negativeWeightLines = useMemo(() => {
     const skPath = Skia.Path.Make();
-
-    // Draw connections between layers
     drawLayerConnections({
       fromCoords: firstLayerCoords,
       toCoords: secondLayerCoords,
@@ -227,7 +242,6 @@ export const NeuralNetwork = ({ weights, predictions }: NeuralNetworkProps) => {
       weightThreshold: WEIGHT_THRESHOLD,
       type: 'negative',
     });
-
     drawLayerConnections({
       fromCoords: secondLayerCoords,
       toCoords: outputLayerCoords,
@@ -236,7 +250,6 @@ export const NeuralNetwork = ({ weights, predictions }: NeuralNetworkProps) => {
       weightThreshold: WEIGHT_THRESHOLD,
       type: 'negative',
     });
-
     return skPath;
   }, [firstLayerCoords, secondLayerCoords, outputLayerCoords, weights]);
 
@@ -247,7 +260,7 @@ export const NeuralNetwork = ({ weights, predictions }: NeuralNetworkProps) => {
       <Canvas
         style={{
           width,
-          height: distanceBetweenLayers * 2 + baseY * 2,
+          height: dimensions.distanceBetweenLayers * 2 + dimensions.baseY * 2,
         }}>
         <Path
           path={positiveWeightLines}
@@ -261,9 +274,49 @@ export const NeuralNetwork = ({ weights, predictions }: NeuralNetworkProps) => {
           color={'red'}
           style="stroke"
         />
-        <Path path={networkPath} color={'#d2d2d2'} style="fill" />
+        <NetworkLayer
+          coords={firstLayerCoords}
+          getOpacity={i =>
+            useDerivedValue(() => predictions.value.hidden1Output[i])
+          }
+        />
+        <NetworkLayer
+          coords={secondLayerCoords}
+          getOpacity={i =>
+            useDerivedValue(() => predictions.value.hidden2Output[i])
+          }
+        />
+        <NetworkLayer
+          coords={outputLayerCoords}
+          getOpacity={i =>
+            useDerivedValue(() => predictions.value.finalOutput[i])
+          }
+        />
       </Canvas>
       <Predictions finalOutput={finalOutput} />
     </View>
   );
+};
+
+const styles = {
+  square: {
+    borderWidth: 1,
+    borderColor: 'white',
+    borderRadius: 40,
+    padding: 2,
+  },
+  squareInner: {
+    flex: 1,
+    borderRadius: 30,
+  },
+  predictionsContainer: {
+    flexDirection: 'row' as const,
+    gap: 8,
+    justifyContent: 'center',
+  },
+  predictionItem: {
+    gap: 4,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
 };
