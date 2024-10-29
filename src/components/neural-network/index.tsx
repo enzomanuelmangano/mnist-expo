@@ -79,7 +79,6 @@ const drawLayerConnections = ({
 export const NeuralNetwork = ({ weights, predictions }: NeuralNetworkProps) => {
   const { width } = useWindowDimensions();
 
-  const paddingHorizontal = (width * 0.1) / 2;
   const circleRadius = 2.5;
   const marginLayers = 7;
   const distanceBetweenLayers = 100;
@@ -87,24 +86,29 @@ export const NeuralNetwork = ({ weights, predictions }: NeuralNetworkProps) => {
 
   const firstLayerCoords = useMemo(() => {
     const layer2 = weights.hiddenLayerWeights;
+    const totalWidth = layer2.length * marginLayers;
+    const paddingHorizontal = (width - totalWidth) / 2;
     return layer2.map((_, i) => ({
       x: i * marginLayers + paddingHorizontal,
       y: baseY,
     }));
-  }, [weights, paddingHorizontal]);
+  }, [weights, width]);
 
   const secondLayerCoords = useMemo(() => {
     const layer2 = weights.outputLayerWeights;
+    const totalWidth = layer2.length * marginLayers;
+    const paddingHorizontal = (width - totalWidth) / 2;
     return layer2.map((_, i) => ({
       x: i * marginLayers + paddingHorizontal,
       y: baseY + distanceBetweenLayers,
     }));
-  }, [weights, paddingHorizontal]);
+  }, [weights, width]);
 
   const outputLayerCoords = useMemo(() => {
     const layer3 = predictions.value.finalOutput;
     const layer2 = weights.outputLayerWeights;
-
+    const totalWidth = layer2.length * marginLayers;
+    const paddingHorizontal = (width - totalWidth) / 2;
     return layer3.map((_, i) => ({
       x:
         i * marginLayers +
@@ -112,7 +116,7 @@ export const NeuralNetwork = ({ weights, predictions }: NeuralNetworkProps) => {
         ((layer2.length - layer3.length) * marginLayers) / 2,
       y: baseY + distanceBetweenLayers * 2,
     }));
-  }, [predictions, paddingHorizontal, weights]);
+  }, [predictions, weights, width]);
 
   const networkPath = useMemo(() => {
     const skPath = Skia.Path.Make();
