@@ -1,11 +1,15 @@
 import { StyleSheet, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { useCallback } from 'react';
+import { useSharedValue } from 'react-native-reanimated';
 
 import ModelWeights from '../find-weights/model_weights.json';
+import NoneMatrix from '../find-weights/examples/none.json';
 
 import * as nn from './neural-network';
 import { Grid } from './components/grid';
+import { NeuralNetwork } from './components/neural-network';
+import type { PredictResult } from './neural-network';
 
 const {
   weight_0: inputLayerWeights,
@@ -16,45 +20,42 @@ const {
   weight_5: outputLayerBias,
 } = ModelWeights;
 
-const transposeMatrix = (matrix: number[][]) => {
-  'worklet';
-  return matrix[0].map((_, colIndex) => matrix.map(row => row[colIndex]));
+const ModelWeightsFlat = {
+  inputLayerWeights: inputLayerWeights,
+  inputLayerBias: inputLayerBias,
+  hiddenLayerWeights: hiddenLayerWeights,
+  hiddenLayerBias: hiddenLayerBias,
+  outputLayerWeights: outputLayerWeights,
+  outputLayerBias: outputLayerBias,
 };
-
-const FlattenedModelWeights = (() => {
-  'worklet';
-
-  return {
-    inputLayerWeights: transposeMatrix(inputLayerWeights),
-    inputLayerBias: inputLayerBias,
-    hiddenLayerWeights: transposeMatrix(hiddenLayerWeights),
-    hiddenLayerBias: hiddenLayerBias,
-    outputLayerWeights: transposeMatrix(outputLayerWeights),
-    outputLayerBias: outputLayerBias,
-  };
-})();
 
 const App = () => {
   const getMaxIndex = (arr: number[]) => {
     'worklet';
     return arr.indexOf(Math.max(...arr));
   };
-  const onUpdate = useCallback((squaresGrid: number[][]) => {
-    'worklet';
+  const predictions = useSharedValue<PredictResult>(
+    nn.predict(ModelWeightsFlat, NoneMatrix.matrix),
+  );
 
-    const result = nn.predict(
-      FlattenedModelWeights,
-      transposeMatrix(squaresGrid),
-    );
+  const onUpdate = useCallback(
+    (squaresGrid: number[][]) => {
+      'worklet';
 
-    const predictedClass = getMaxIndex(result.finalOutput);
-    console.log('Predicted class:', predictedClass);
-  }, []);
+      const result = nn.predict(ModelWeightsFlat, squaresGrid);
+      predictions.value = result;
+
+      const predictedClass = getMaxIndex(result.finalOutput);
+      console.log('Predicted class:', predictedClass);
+    },
+    [predictions],
+  );
 
   return (
     <View style={styles.container}>
       <StatusBar style="auto" />
       <Grid onUpdate={onUpdate} />
+      <NeuralNetwork weights={ModelWeightsFlat} predictions={predictions} />
     </View>
   );
 };

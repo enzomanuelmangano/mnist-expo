@@ -1,10 +1,16 @@
-type NeuralNetworkWeights = {
+export type NeuralNetworkWeights = {
   inputLayerWeights: number[][];
   inputLayerBias: number[];
   hiddenLayerWeights: number[][];
   hiddenLayerBias: number[];
   outputLayerWeights: number[][];
   outputLayerBias: number[];
+};
+
+export type PredictResult = {
+  hidden1Output: number[];
+  hidden2Output: number[];
+  finalOutput: number[];
 };
 
 function relu(x: number): number {
@@ -22,19 +28,19 @@ function softmax(arr: number[]): number[] {
 
 function matrixVectorMultiply(matrix: number[][], vector: number[]): number[] {
   'worklet';
-  return matrix.map(row =>
-    row.reduce((sum, val, j) => sum + val * vector[j], 0),
-  );
+  const result = new Array(matrix[0].length).fill(0);
+  for (let i = 0; i < matrix[0].length; i++) {
+    for (let j = 0; j < matrix.length; j++) {
+      result[i] += matrix[j][i] * vector[j];
+    }
+  }
+  return result;
 }
 
 export function predict(
   weights: NeuralNetworkWeights,
   input: number[][],
-): {
-  hidden1Output: number[];
-  hidden2Output: number[];
-  finalOutput: number[];
-} {
+): PredictResult {
   'worklet';
   // Flatten input matrix into 1D array
   const flattenedInput = input.flat();
