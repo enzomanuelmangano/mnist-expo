@@ -1,0 +1,34 @@
+{
+  "input": {
+    "width": 28,
+    "height": 28
+  },
+  "layers": [
+    {
+      "type": "input",
+      "size": 784,
+      "description": "Flattened 28x28 input image"
+    },
+    {
+      "type": "hidden",
+      "size": 50,
+      "activation": "relu",
+      "description": "First hidden layer"
+    },
+    {
+      "type": "hidden",
+      "size": 50,
+      "activation": "relu",
+      "description": "Second hidden layer"
+    },
+    {
+      "type": "output",
+      "size": 11,
+      "activation": "softmax",
+      "description": "Output layer (0-9 digits + None class)"
+    }
+  ],
+  "classes": [
+    "0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "none"
+  ]
+}

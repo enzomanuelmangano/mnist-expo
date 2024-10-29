@@ -8,6 +8,20 @@ from tensorflow.keras.utils import to_categorical
 import os
 import matplotlib.pyplot as plt
 
+# Load network configuration
+with open('../network.config.json', 'r') as config_file:
+    network_config = json.load(config_file)
+
+# Get configuration values
+input_width = network_config['input']['width']
+input_height = network_config['input']['height']
+num_classes = len(network_config['classes'])
+hidden1_size = network_config['layers'][1]['size']
+hidden2_size = network_config['layers'][2]['size']
+hidden1_activation = network_config['layers'][1]['activation']
+hidden2_activation = network_config['layers'][2]['activation']
+output_activation = network_config['layers'][3]['activation']
+
 # Load MNIST data
 (x_train, y_train), (x_test, y_test) = mnist.load_data()
 
@@ -16,29 +30,29 @@ x_train = np.where(x_train > 127.5, 1.0, 0.0)
 x_test = np.where(x_test > 127.5, 1.0, 0.0)
 
 # Add None class (all zeros) to training and test data
-none_train = np.zeros((5000, 28, 28))  # Create 5000 empty samples
-none_test = np.zeros((1000, 28, 28))   # Create 1000 empty samples
+none_train = np.zeros((5000, input_height, input_width))  # Create 5000 empty samples
+none_test = np.zeros((1000, input_height, input_width))   # Create 1000 empty samples
 
 x_train = np.concatenate([x_train, none_train])
 x_test = np.concatenate([x_test, none_test])
 
-# Add labels for None class (class 10)
-none_train_labels = np.full((5000,), 10)
-none_test_labels = np.full((1000,), 10)
+# Add labels for None class (last class)
+none_train_labels = np.full((5000,), num_classes - 1)
+none_test_labels = np.full((1000,), num_classes - 1)
 
 y_train = np.concatenate([y_train, none_train_labels])
 y_test = np.concatenate([y_test, none_test_labels])
 
-# Convert labels to one-hot encoding (now 11 classes including None)
-y_train = to_categorical(y_train, 11)
-y_test = to_categorical(y_test, 11)
+# Convert labels to one-hot encoding
+y_train = to_categorical(y_train, num_classes)
+y_test = to_categorical(y_test, num_classes)
 
-# Build the model with two hidden layers of 50 neurons
+# Build the model using configuration
 model = Sequential([
-    Flatten(input_shape=(28, 28)),       # Flatten the 28x28 image to a vector of size 784
-    Dense(50, activation='relu'),        # First hidden layer with 50 neurons
-    Dense(50, activation='relu'),        # Second hidden layer with 50 neurons
-    Dense(11, activation='softmax')      # Output layer for 11 classes (0-9 + None)
+    Flatten(input_shape=(input_height, input_width)),
+    Dense(hidden1_size, activation=hidden1_activation),
+    Dense(hidden2_size, activation=hidden2_activation),
+    Dense(num_classes, activation=output_activation)
 ])
 
 # Compile the model
@@ -70,9 +84,9 @@ if not os.path.exists(examples_dir):
     os.makedirs(examples_dir)
 
 # Save example images and matrices for each digit and none
-for digit in range(11):  # 0-9 and None
-    if digit == 10:  # None class
-        img = np.zeros((28, 28))
+for digit in range(num_classes):  # 0-9 and None
+    if digit == num_classes - 1:  # None class
+        img = np.zeros((input_height, input_width))
         img_filename = f'{examples_dir}/none.png'
         json_filename = f'{examples_dir}/none.json'
     else:
@@ -90,4 +104,4 @@ for digit in range(11):  # 0-9 and None
     with open(json_filename, 'w') as json_file:
         json.dump(matrix_dict, json_file)
         
-    print(f'Saved example image and matrix for {"none" if digit == 10 else str(digit)}')
+    print(f'Saved example image and matrix for {"none" if digit == num_classes - 1 else str(digit)}')
