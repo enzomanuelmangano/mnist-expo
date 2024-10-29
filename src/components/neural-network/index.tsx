@@ -1,6 +1,6 @@
 import { Text, useWindowDimensions, View } from 'react-native';
 import type { SharedValue } from 'react-native-reanimated';
-import Animated, { useDerivedValue } from 'react-native-reanimated';
+import Animated, { useDerivedValue, withTiming } from 'react-native-reanimated';
 import { useMemo } from 'react';
 import type { SkPath } from '@shopify/react-native-skia';
 import { Canvas, Path, Skia } from '@shopify/react-native-skia';
@@ -14,19 +14,23 @@ type NeuralNetworkProps = {
 
 type SquareProps = {
   progress: SharedValue<number>;
+  isActive: SharedValue<boolean>;
   size: number;
 };
 
 const color = '#d2d2d2';
 
-const Square = ({ progress, size }: SquareProps) => {
+const Square = ({ progress, isActive, size }: SquareProps) => {
+  const rColor = useDerivedValue(() => {
+    return withTiming(isActive.value ? '#5cd1ff' : 'white');
+  });
   return (
-    <View
+    <Animated.View
       style={{
         height: size,
         width: size,
         borderWidth: 1,
-        borderColor: color,
+        borderColor: rColor,
         borderRadius: 40,
         padding: 2,
       }}>
@@ -34,11 +38,11 @@ const Square = ({ progress, size }: SquareProps) => {
         style={{
           opacity: progress,
           flex: 1,
-          backgroundColor: color,
+          backgroundColor: rColor,
           borderRadius: 30,
         }}
       />
-    </View>
+    </Animated.View>
   );
 };
 
@@ -169,7 +173,7 @@ export const NeuralNetwork = ({ weights, predictions }: NeuralNetworkProps) => {
       layerWeights: weights.outputLayerWeights,
       path: skPath,
       weightThreshold: WEIGHT_THRESHOLD,
-      type: 'negative',
+      type: 'positive',
     });
 
     return skPath;
@@ -227,6 +231,15 @@ export const NeuralNetwork = ({ weights, predictions }: NeuralNetworkProps) => {
           const progress = useDerivedValue(
             () => predictions.value.finalOutput[i],
           );
+
+          // eslint-disable-next-line react-hooks/rules-of-hooks
+          const isActive = useDerivedValue(() => {
+            return (
+              predictions.value.finalOutput.findIndex(
+                (val, index) => val > 0.5 && index === i,
+              ) !== -1
+            );
+          });
           return (
             <View
               key={i}
@@ -236,7 +249,7 @@ export const NeuralNetwork = ({ weights, predictions }: NeuralNetworkProps) => {
                 alignItems: 'center',
               }}>
               <Text style={{ color }}>{i === 10 ? 'N/A' : i}</Text>
-              <Square progress={progress} size={20} />
+              <Square progress={progress} isActive={isActive} size={20} />
             </View>
           );
         })}

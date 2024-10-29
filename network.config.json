@@ -11,7 +11,7 @@
     },
     {
       "type": "hidden",
-      "size": 35,
+      "size": 55,
       "activation": "relu",
       "description": "First hidden layer"
     },
