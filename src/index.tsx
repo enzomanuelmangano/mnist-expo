@@ -1,35 +1,60 @@
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
-import { useEffect } from 'react';
+import { useCallback } from 'react';
 
 import ModelWeights from '../find-weights/model_weights.json';
 
-async function loadAndInspectModel() {
-  const {
-    weight_0: inputLayerWeights,
-    weight_1: inputLayerBias,
-    weight_2: hiddenLayerWeights,
-    weight_3: hiddenLayerBias,
-    weight_4: outputLayerWeights,
-    weight_5: outputLayerBias,
-  } = ModelWeights;
+import * as nn from './neural-network';
+import { Grid } from './components/grid';
 
-  console.log(inputLayerWeights.length);
-  console.log(inputLayerBias.length);
-  console.log(hiddenLayerWeights.length);
-  console.log(hiddenLayerBias.length);
-  console.log(outputLayerWeights.length);
-  console.log(outputLayerBias.length);
-}
+const {
+  weight_0: inputLayerWeights,
+  weight_1: inputLayerBias,
+  weight_2: hiddenLayerWeights,
+  weight_3: hiddenLayerBias,
+  weight_4: outputLayerWeights,
+  weight_5: outputLayerBias,
+} = ModelWeights;
+
+const transposeMatrix = (matrix: number[][]) => {
+  'worklet';
+  return matrix[0].map((_, colIndex) => matrix.map(row => row[colIndex]));
+};
+
+const FlattenedModelWeights = (() => {
+  'worklet';
+
+  return {
+    inputLayerWeights: transposeMatrix(inputLayerWeights),
+    inputLayerBias: inputLayerBias,
+    hiddenLayerWeights: transposeMatrix(hiddenLayerWeights),
+    hiddenLayerBias: hiddenLayerBias,
+    outputLayerWeights: transposeMatrix(outputLayerWeights),
+    outputLayerBias: outputLayerBias,
+  };
+})();
 
 const App = () => {
-  useEffect(() => {
-    loadAndInspectModel();
+  const getMaxIndex = (arr: number[]) => {
+    'worklet';
+    return arr.indexOf(Math.max(...arr));
+  };
+  const onUpdate = useCallback((squaresGrid: number[][]) => {
+    'worklet';
+
+    const result = nn.predict(
+      FlattenedModelWeights,
+      transposeMatrix(squaresGrid),
+    );
+
+    const predictedClass = getMaxIndex(result.finalOutput);
+    console.log('Predicted class:', predictedClass);
   }, []);
+
   return (
     <View style={styles.container}>
-      <Text>Open up App.tsx to start working on your app!</Text>
       <StatusBar style="auto" />
+      <Grid onUpdate={onUpdate} />
     </View>
   );
 };
