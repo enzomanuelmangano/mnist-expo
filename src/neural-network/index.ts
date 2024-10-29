@@ -18,6 +18,11 @@ function relu(x: number): number {
   return Math.max(0, x);
 }
 
+function sigmoid(x: number): number {
+  'worklet';
+  return 1 / (1 + Math.exp(-x));
+}
+
 function softmax(arr: number[]): number[] {
   'worklet';
   const maxVal = Math.max(...arr);
@@ -51,7 +56,7 @@ export function predict(
     flattenedInput,
   );
   const hidden1Output = hidden1.map((val, i) =>
-    relu(val + weights.inputLayerBias[i]),
+    sigmoid(val + weights.inputLayerBias[i]),
   );
 
   // Second hidden layer with 50 neurons and ReLU activation

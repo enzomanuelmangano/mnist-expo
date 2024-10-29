@@ -12,7 +12,7 @@
     {
       "type": "hidden",
       "size": 55,
-      "activation": "relu",
+      "activation": "sigmoid",
       "description": "First hidden layer"
     },
     {
