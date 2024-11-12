@@ -1,15 +1,9 @@
 import { gestureHandlerRootHOC } from 'react-native-gesture-handler';
-import { WithSkiaWeb } from '@shopify/react-native-skia/lib/module/web';
+
+import Main from '../components/main';
 
 function App() {
-  return (
-    <WithSkiaWeb
-      fallback={<></>}
-      getComponent={() => {
-        return require('../components/main');
-      }}
-    />
-  );
+  return <Main />;
 }
 
 // eslint-disable-next-line import/no-default-export
