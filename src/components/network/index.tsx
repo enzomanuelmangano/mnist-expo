@@ -4,43 +4,15 @@ import type { SharedValue } from 'react-native-reanimated';
 import { useDerivedValue } from 'react-native-reanimated';
 import { useMemo } from 'react';
 import type { SkPath } from '@shopify/react-native-skia';
-import { Canvas, Circle, Group, Path, Skia } from '@shopify/react-native-skia';
+import { Canvas, Path, Skia } from '@shopify/react-native-skia';
 
 import type { NeuralNetworkWeights, PredictResult } from '../../neural-network';
+
+import { NetworkNode } from './node';
 
 type NeuralNetworkProps = {
   weights: NeuralNetworkWeights;
   predictions: SharedValue<PredictResult>;
-};
-
-// Neural network visualization components
-const NetworkNode = ({
-  coord,
-  opacity,
-}: {
-  coord: { x: number; y: number };
-  opacity: SharedValue<number>;
-}) => {
-  const circleRadius = 2.5;
-
-  return (
-    <Group key={coord.x}>
-      <Circle
-        cx={coord.x}
-        cy={coord.y}
-        r={circleRadius}
-        color={'white'}
-        opacity={opacity}
-      />
-      <Circle
-        cx={coord.x}
-        cy={coord.y}
-        r={circleRadius}
-        color={'white'}
-        style={'stroke'}
-      />
-    </Group>
-  );
 };
 
 const NetworkLayer = ({
