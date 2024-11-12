@@ -1,7 +1,7 @@
 import { StyleSheet, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { useCallback, useRef } from 'react';
-import { useSharedValue } from 'react-native-reanimated';
+import { useDerivedValue, useSharedValue } from 'react-native-reanimated';
 import { PressableScale } from 'pressto';
 
 import ModelWeights from '../find-weights/model_weights.json';
@@ -10,8 +10,9 @@ import NoneMatrix from '../find-weights/examples/none.json';
 import * as nn from './neural-network';
 import type { GridHandleRef } from './components/grid';
 import { Grid } from './components/grid';
-import { NeuralNetwork } from './components/neural-network';
+import { NeuralNetwork } from './components/network';
 import type { PredictResult } from './neural-network';
+import { Predictions } from './components/predictions';
 
 const {
   weight_0: inputLayerWeights,
@@ -48,16 +49,16 @@ const App = () => {
 
   const gridRef = useRef<GridHandleRef>(null);
 
+  const finalOutput = useDerivedValue(() => predictions.value.finalOutput);
+
   return (
     <View style={styles.container}>
       <StatusBar style="light" />
-      <View style={{ flex: 1, justifyContent: 'center' }}>
+      <View style={styles.fillCenter}>
         <NeuralNetwork weights={ModelWeightsFlat} predictions={predictions} />
+        <Predictions finalOutput={finalOutput} />
       </View>
-      <View
-        style={{
-          flex: 1,
-        }}>
+      <View style={styles.fill}>
         <Grid ref={gridRef} onUpdate={onUpdate} />
       </View>
 
@@ -72,6 +73,13 @@ const App = () => {
 };
 
 const styles = StyleSheet.create({
+  fill: {
+    flex: 1,
+  },
+  fillCenter: {
+    flex: 1,
+    justifyContent: 'center',
+  },
   container: {
     flex: 1,
     backgroundColor: '#000000',

@@ -1,6 +1,7 @@
-import { Text, useWindowDimensions, View } from 'react-native';
+/* eslint-disable react-hooks/rules-of-hooks */
+import { useWindowDimensions, View } from 'react-native';
 import type { SharedValue } from 'react-native-reanimated';
-import Animated, { useDerivedValue, withTiming } from 'react-native-reanimated';
+import { useDerivedValue } from 'react-native-reanimated';
 import { useMemo } from 'react';
 import type { SkPath } from '@shopify/react-native-skia';
 import { Canvas, Circle, Group, Path, Skia } from '@shopify/react-native-skia';
@@ -10,69 +11,6 @@ import type { NeuralNetworkWeights, PredictResult } from '../../neural-network';
 type NeuralNetworkProps = {
   weights: NeuralNetworkWeights;
   predictions: SharedValue<PredictResult>;
-};
-
-// Components
-const Square = ({
-  progress,
-  isActive,
-  size,
-}: {
-  progress: SharedValue<number>;
-  isActive: SharedValue<boolean>;
-  size: number;
-}) => {
-  const rColor = useDerivedValue(() => {
-    return withTiming(isActive.value ? '#5cd1ff' : 'white');
-  });
-
-  return (
-    <Animated.View style={[styles.square, { height: size, width: size }]}>
-      <Animated.View
-        style={[
-          styles.squareInner,
-          { opacity: progress, backgroundColor: rColor },
-        ]}
-      />
-    </Animated.View>
-  );
-};
-
-const Predictions = ({
-  finalOutput,
-}: {
-  finalOutput: SharedValue<number[]>;
-}) => {
-  return (
-    <View style={styles.predictionsContainer}>
-      {finalOutput.value.map((_, i) => (
-        <PredictionItem key={i} index={i} finalOutput={finalOutput} />
-      ))}
-    </View>
-  );
-};
-
-const PredictionItem = ({
-  index,
-  finalOutput,
-}: {
-  index: number;
-  finalOutput: SharedValue<number[]>;
-}) => {
-  const progress = useDerivedValue(() => finalOutput.value[index]);
-  const isActive = useDerivedValue(() => {
-    return (
-      finalOutput.value.findIndex((val, idx) => val > 0.5 && idx === index) !==
-      -1
-    );
-  });
-
-  return (
-    <View style={styles.predictionItem}>
-      <Text style={{ color: '#d2d2d2' }}>{index === 10 ? 'N/A' : index}</Text>
-      <Square progress={progress} isActive={isActive} size={20} />
-    </View>
-  );
 };
 
 // Neural network visualization components
@@ -253,8 +191,6 @@ export const NeuralNetwork = ({ weights, predictions }: NeuralNetworkProps) => {
     return skPath;
   }, [firstLayerCoords, secondLayerCoords, outputLayerCoords, weights]);
 
-  const finalOutput = useDerivedValue(() => predictions.value.finalOutput);
-
   return (
     <View>
       <Canvas
@@ -293,30 +229,6 @@ export const NeuralNetwork = ({ weights, predictions }: NeuralNetworkProps) => {
           }
         />
       </Canvas>
-      <Predictions finalOutput={finalOutput} />
     </View>
   );
-};
-
-const styles = {
-  square: {
-    borderWidth: 1,
-    borderColor: 'white',
-    borderRadius: 40,
-    padding: 2,
-  },
-  squareInner: {
-    flex: 1,
-    borderRadius: 30,
-  },
-  predictionsContainer: {
-    flexDirection: 'row' as const,
-    gap: 8,
-    justifyContent: 'center',
-  },
-  predictionItem: {
-    gap: 4,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
 };
