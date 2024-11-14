@@ -1,4 +1,4 @@
-# MNIST Digit Recognition
+# Expo MNIST Digit Recognition
 
 A React Native application that recognizes handwritten digits using a neural network trained on the MNIST dataset. The app includes a real-time visualization of the neural network's decision-making process.
 
@@ -14,7 +14,7 @@ Everything runs magically on Expo Go and on the Web at [mnist.reactiive.io](http
 
 I was strongly inspired by this Brilliant demo: [Network Visualization](https://x.com/gabeElbling/status/1850220333631943068)
 
-## Finding the proper weights (needs improvement)
+## Finding the proper weights (PRs are welcome 🤗)
 
 The generated weights are given in the `find-weights` folder. I included them in the repo for convenience. They are generated using the Python script in the `find-weights` folder.
 
